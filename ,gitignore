@@ -1,0 +1,26 @@
+# 忽略所有 .pyc 文件
+*.pyc
+
+# 忽略 __pycache__ 目录
+__pycache__
+
+# 忽略所有 .log 文件
+*.log
+
+# 忽略 IDE 生成的临时文件
+.idea
+.vscode
+*.iml
+
+# 忽略虚拟环境目录
+venv
+env
+
+# 忽略敏感信息文件
+config.py
+secrets.json
+
+# 忽略其他不必要的文件
+*.tmp
+*.bak
+*.swp
