@@ -1,1 +1,4 @@
 datasets
+*.pth
+*.pt
+*/weights
