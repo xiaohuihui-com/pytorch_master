@@ -1,6 +1,7 @@
+import torch
+import torchvision
+import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-from torchvision.datasets import MNIST
-from torchvision.transforms import Compose, Normalize, Resize, ToTensor
 import nncore
 from nncore.engine import Engine
 from pydl.models.classification_model import Mymodel
@@ -20,17 +21,21 @@ stages = [
 
 
 def main():
-    # Prepare datasets and the model
-    transform = Compose([ToTensor(), Resize(32), Normalize(0.5, 0.5)])
+    transform = transforms.Compose(
+        [transforms.ToTensor(),
+         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-    train = MNIST('../datasets', train=True, transform=transform, download=True)
-    train_loader = DataLoader(train, batch_size=16, shuffle=True)
+    train_set = torchvision.datasets.CIFAR10(root='../datasets', train=True,
+                                             download=True, transform=transform)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=36,
+                                               shuffle=True, num_workers=8)
 
-    val = MNIST('../datasets', train=False, transform=transform, download=True)
-    val_loader = DataLoader(val, batch_size=64, shuffle=False)
+    val_set = torchvision.datasets.CIFAR10(root='../datasets', train=False,
+                                           download=True, transform=transform)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=5000,
+                                             shuffle=False, num_workers=8)
 
     data_loaders = dict(train=train_loader, val=val_loader)
-    # model = LeNet()
     net = LeNet()
     model = Mymodel(net)
     time_str = nncore.get_timestamp()
