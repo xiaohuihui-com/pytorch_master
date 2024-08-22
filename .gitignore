@@ -1,4 +1,7 @@
-datasets
+datasets/
+work_dirs/
+timm/
+nncore/
 *.pth
 *.pt
 */weights
