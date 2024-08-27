@@ -1,31 +1,19 @@
 import argparse
 import torch
 import torchvision
-import torchvision.transforms as transforms
+from torchvision import transforms
 from torch.utils.data import DataLoader
 import nncore
 from nncore.engine import Engine, set_random_seed, comm
-from pydl.models.classification_model import Mymodel
-# from pydl.networks.classification_network import LeNet
+import timm
+from nncore.nn import build_model
 from pydl.networks.lenet import LeNet
-
-stages = [
-    dict(
-        epochs=5,
-        optimizer=dict(type='Adam', lr=1e-3),
-        warmup=dict(type='iter', policy='linear', steps=500, ratio=0.001)),
-    dict(
-        epochs=10,
-        optimizer=dict(type='SGD', lr=1e-3, momentum=0.9),
-        lr_schedule=dict(type='iter', policy='cosine'),
-        validation=dict(interval=1))
-]
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', help='config file')
-    parser.add_argument('--checkpoint', help='load a checkpoint')
+    parser.add_argument('--config', default='../configs/common/base_30e_resnet18.py', help='config file')
+    parser.add_argument('--checkpoint', default='', help='load a checkpoint')
     parser.add_argument('--resume', help='resume from a checkpoint')
     parser.add_argument('--seed', help='random seed')
     parser.add_argument('--eval', help='evaluation mode', action='store_true')
@@ -34,7 +22,7 @@ def parse_args():
     return args
 
 
-def main():
+def dataloder_cifar10():
     transform = transforms.Compose(
         [transforms.ToTensor(),
          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -49,29 +37,38 @@ def main():
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=5000,
                                              shuffle=False, num_workers=8)
 
-    data_loaders = dict(train=train_loader, val=val_loader)
+    return dict(train=train_loader, val=val_loader)
 
-    net = LeNet()
-    model = Mymodel(net)
-    launcher = comm.init_dist(launcher=None)
+
+def main():
+    args = parse_args()
+    cfg = nncore.Config.from_file(args.config)
+
+    launcher = comm.init_dist()
     time_str = nncore.get_timestamp()
     work_dir = nncore.join('../work_dirs', time_str)
     log_file = nncore.join(work_dir, '{}.log'.format(time_str))
     logger = nncore.get_logger(log_file=log_file)
     logger.info(f'Environment info:\n{nncore.collect_env_info()}')
     logger.info(f'Elastic launcher: {launcher}')
-    # seed = args.seed if args.seed is not None else cfg.get('seed')
-    seed = set_random_seed(seed=None, deterministic=True)
+    seed = args.seed if args.seed is not None else cfg.get('seed')
+    seed = set_random_seed(seed=seed, deterministic=True)
     logger.info(f'Using random seed: {seed}')
 
+    data_loaders = dataloder_cifar10()
+    net = timm.create_model('resnet18', num_classes=10, pretrained=True,
+                            pretrained_cfg_overlay=dict(file='../pretrained_weights/resnet18.pth'))
+
+    model = build_model(dict(type='Mymodel', net=net), dist=bool(launcher))
     # Initialize and launch engine
     engine = Engine(
         model=model,
         data_loaders=data_loaders,
-        stages=stages,
+        stages=cfg.stages,
         work_dir=work_dir,
         amp=True,
-        seed=seed
+        seed=seed,
+        hooks=cfg.hooks,
     )
     engine.launch()
 

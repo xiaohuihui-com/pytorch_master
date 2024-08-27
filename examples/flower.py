@@ -80,6 +80,7 @@ def main():
     net = timm.create_model('resnet18', num_classes=5, pretrained=True,
                             pretrained_cfg_overlay=dict(file='../pretrained_weights/resnet18.pth'))
     model = build_model(dict(type='Mymodel', net=net), dist=bool(launcher))
+    logger.info(model)
     # Initialize and launch engine
     engine = Engine(
         model=model,

@@ -9,18 +9,25 @@ from pydl.networks.classification_network import LeNet
 
 stages = [
     dict(
-        epochs=5,
-        optimizer=dict(type='Adam', lr=1e-3),
-        warmup=dict(type='iter', policy='linear', steps=500, ratio=0.001)),
-    dict(
         epochs=10,
-        optimizer=dict(type='SGD', lr=1e-3, momentum=0.9),
+        optimizer=dict(type='SGD', lr=1e-2, momentum=0.9, weight_decay=1e-4),
         lr_schedule=dict(type='iter', policy='cosine'),
+        warmup=dict(type='iter', policy='linear', steps=500, ratio=0.001),
         validation=dict(interval=1))
 ]
 
 
 def main():
+    # Prepare datasets and the model
+    transform = Compose([ToTensor(), Resize(32), Normalize(0.5, 0.5)])
+    train = MNIST('../datasets', train=True, transform=transform, download=True)
+    train_loader = DataLoader(train, batch_size=16, shuffle=True)
+    val = MNIST('../datasets', train=False, transform=transform, download=True)
+    val_loader = DataLoader(val, batch_size=64, shuffle=False)
+
+    data_loaders = dict(train=train_loader, val=val_loader)
+    net = LeNet()
+    model = Mymodel(net)
     launcher = comm.init_dist(launcher=None)
     time_str = nncore.get_timestamp()
     work_dir = nncore.join('../work_dirs', time_str)
@@ -32,23 +39,13 @@ def main():
     seed = set_random_seed(seed=None, deterministic=True)
     logger.info(f'Using random seed: {seed}')
 
-    # Prepare datasets and the model
-    transform = Compose([ToTensor(), Resize(32), Normalize(0.5, 0.5)])
-    train = MNIST('../datasets', train=True, transform=transform, download=True)
-    train_loader = DataLoader(train, batch_size=16, shuffle=True)
-    val = MNIST('../datasets', train=False, transform=transform, download=True)
-    val_loader = DataLoader(val, batch_size=64, shuffle=False)
-
-    data_loaders = dict(train=train_loader, val=val_loader)
-    net = LeNet()
-    model = Mymodel(net)
     # Initialize and launch engine
     engine = Engine(
         model=model,
         data_loaders=data_loaders,
         stages=stages,
         work_dir=work_dir,
-        amp=True,
+        amp=False,
         seed=seed
     )
     engine.launch()

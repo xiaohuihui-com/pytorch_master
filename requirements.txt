@@ -1,3 +1,6 @@
 torch
-nncore
 torchvision
+nncore
+timm
+opencv-python
+huggingface_hub

@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
+from nncore.nn import MODELS
 
 
+@MODELS.register()
 class Mymodel(nn.Module):
     def __init__(self, net, loss=None):
         super(Mymodel, self).__init__()
